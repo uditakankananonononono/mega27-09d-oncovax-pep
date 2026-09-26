@@ -14,7 +14,7 @@ with open('data/raw/tcell_full_v3.csv') as f:
             pep, host, qual, allele, mclass = row[11], row[43], row[122], row[141], row[145]
         except IndexError:
             continue
-        if host != 'Homo sapiens (human)' or mclass != 'I' or not __import__('re').match(r'^HLA-[A-C]\*', allele):
+        if host != 'Homo sapiens (human)' or mclass != 'I' or not __import__('re').match(r'^HLA-[A-C]\*\d{2}:\d{2}[A-Z]?$', allele):
             continue
         if not (8 <= len(pep) <= 15) or not set(pep) <= AA:
             continue
