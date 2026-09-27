@@ -1,0 +1,86 @@
+{
+ "allele_mapping": {
+  "HLA-A*02:01": "HLA-A*02:01",
+  "HLA-B*44:02": "HLA-B*44:02",
+  "HLA-B*44:03": "HLA-B*44:03",
+  "HLA-B*37:01": "HLA-B*35:05",
+  "HLA-B*49:01": "HLA-B*51:01",
+  "HLA-A*01:01": "HLA-A*01:01",
+  "HLA-A*30:02": "HLA-A*30:01",
+  "HLA-A*02:02": "HLA-A*02:03",
+  "HLA-A*33:01": "HLA-A*30:01",
+  "HLA-A*33:03": "HLA-A*30:01",
+  "HLA-A*02:05": "HLA-A*02:05",
+  "HLA-A*02:07": "HLA-A*02:07",
+  "HLA-C*03:03": "HLA-C*03:04",
+  "HLA-A*02:06": "HLA-A*02:06",
+  "HLA-A*02:09": "HLA-A*02:07",
+  "HLA-A*02:03": "HLA-A*02:03",
+  "HLA-A*30:01": "HLA-A*30:01",
+  "HLA-A*25:01": "HLA-A*24:02",
+  "HLA-B*14:02": "HLA-B*14:02",
+  "HLA-A*66:01": "HLA-A*68:01",
+  "HLA-B*44:04": "HLA-B*44:03",
+  "HLA-B*44:05": "HLA-B*44:05",
+  "HLA-A*02:04": "HLA-A*02:03",
+  "HLA-C*03:02": "HLA-C*03:04",
+  "HLA-B*41:01": "HLA-B*41:02",
+  "HLA-C*03:04": "HLA-C*03:04",
+  "HLA-A*01:03": "HLA-A*01:01",
+  "HLA-A*02:10": "HLA-A*02:07",
+  "HLA-B*41:02": "HLA-B*41:02",
+  "HLA-B*81:01": "HLA-B*81:02",
+  "HLA-A*02:17": "HLA-A*02:24"
+ },
+ "deepimmuno_commit": "df42ac5b6bddfe531268335e2dcb496559cd488b",
+ "weights": "models/cnn_model_331_3_7 (TF2 object checkpoint df42ac5)",
+ "keras3_shim": {
+  "shim": "Keras3 cannot read TF2 object checkpoint; file-level repack to /tmp/di_ckpt (bytes unchanged, prefix renamed) + name-mapped variable assignment; no numeric modification of weights",
+  "conv_dense_assignment": {
+   "conv2d(pep1)": 1,
+   "conv2d_2(hla1)": 0,
+   "conv2d_1(pep2)": 4,
+   "conv2d_3(hla2)": 5,
+   "dense": 8,
+   "dense_1": 9
+  },
+  "bn_pairing_method": "label-free: empirical pre-BN channel means on unlabeled probe encodings matched to stored moving_mean/moving_variance via z-MSE; aborts if margin < 2",
+  "bn16_assignment": {
+   "pep": 3,
+   "hla": 2,
+   "margin": 14.416480830229062,
+   "zdist": {
+    "2": [
+     0.037477,
+     0.000328
+    ],
+    "3": [
+     0.003884,
+     0.023234
+    ]
+   }
+  },
+  "bn32_assignment": {
+   "pep": 6,
+   "hla": 7,
+   "margin": 622.2350287534937,
+   "zdist": {
+    "6": [
+     0.002703,
+     2.988616
+    ],
+    "7": [
+     1.268679,
+     0.004139
+    ]
+   }
+  },
+  "tf_version": "2.21.0",
+  "probe_score_spread": {
+   "min": 0.008134189993143082,
+   "max": 0.9958721995353699,
+   "std": 0.2536633014678955
+  }
+ },
+ "n_pairs": 3890
+}

@@ -1,0 +1,33 @@
+{
+ "comparator": "DeepImmuno-CNN (pinned commit df42ac5b)",
+ "addendum": "docs/ADDENDUM_COMPARATOR_B_EXEC_2026-09-28.md",
+ "n_test": 3890,
+ "n_missing_any_system": 0,
+ "test_pos_rate": 0.3218508997429306,
+ "results": {
+  "deepimmuno": {
+   "AUPRC": 0.31109520814412606,
+   "AUROC": 0.5139107223741483,
+   "Recall_at_100": 0.26,
+   "NDCG_at_100": 0.32024978531375947
+  },
+  "netmhcpan_el_rank": {
+   "AUPRC": 0.4248722153568454,
+   "AUROC": 0.6132183956768489,
+   "Recall_at_100": 0.48,
+   "NDCG_at_100": 0.38872670201228177
+  },
+  "v1_logreg": {
+   "AUPRC": 0.4875045351769094,
+   "AUROC": 0.697683403294683,
+   "Recall_at_100": 0.6,
+   "NDCG_at_100": 0.5823207575065982
+  },
+  "v1_hgb": {
+   "AUPRC": 0.5201513859446814,
+   "AUROC": 0.7282819058876533,
+   "Recall_at_100": 0.61,
+   "NDCG_at_100": 0.5106991672946544
+  }
+ }
+}

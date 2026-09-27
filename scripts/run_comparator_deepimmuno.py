@@ -224,11 +224,9 @@ def infer():
         fh.write('peptide,allele,deepimmuno_score\n')
         for p, a, s in out_rows:
             fh.write(f"{p},{a},{s}\n")
-    norm_map = {}
-    for k, v in mapping_log.items():
-        pretty = k[:6] + ':' + k[6:] if len(k) > 6 else k
-        pretty_v = v[:6] + ':' + v[6:] if len(v) > 6 else v
-        norm_map[pretty] = pretty_v
+    def pretty(k):
+        return k[:6] + k[6:8] + ':' + k[8:] if len(k) > 8 else k
+    norm_map = {pretty(k): pretty(v) for k, v in mapping_log.items()}
     json.dump({"allele_mapping": norm_map,
                "deepimmuno_commit": "df42ac5b6bddfe531268335e2dcb496559cd488b",
                "weights": "models/cnn_model_331_3_7 (TF2 object checkpoint df42ac5)",
