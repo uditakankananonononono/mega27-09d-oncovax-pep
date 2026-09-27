@@ -44,3 +44,36 @@ BEAT requires exceeding BOTH comparators on AUPRC on the identical frozen
 partition for that comparator. Outcomes reported as-is either way;
 negatives are not terminal. If DeepImmuno cannot be executed faithfully,
 NeoTImmuML (PMC12585993) is the documented fallback under a new addendum.
+
+## Supplement 1 (2026-09-28, pre-execution, label-free): Keras-3 weight-load shim
+
+The published weights (`models/cnn_model_331_3_7`) are a TF2 object-graph
+checkpoint (variables under generic `layer_with_weights-N` paths; files
+`.data-00000-of-00001`/`.index`). tensorflow-cpu 2.21.0 (Keras 3) cannot
+load it natively. The following shim is locked here BEFORE any execution
+and before any label contact:
+
+1. File-level repack only: copy the two published checkpoint files to
+   /tmp/di_ckpt/ckpt.* with a rewritten `checkpoint` pointer file.
+   Bytes unchanged; no numeric modification of any weight.
+2. Conv and Dense layers are assigned unambiguously by kernel shape:
+   [15,12,1,16]=HLA conv1 (lww-0), [2,12,1,16]=peptide conv1 (lww-1),
+   [2,1,16,32]=peptide conv2 (lww-4), [9,1,16,32]=HLA conv2 (lww-5),
+   [256,128]=dense (lww-8), [128,1]=dense_1 (lww-9). Shape asserts on
+   every assignment.
+3. The four BatchNormalization layers are shape-ambiguous in pairs
+   (16,16) lww-2/3 and (32,32) lww-6/7. Pairing is resolved label-free:
+   empirical pre-BN channel means computed on unlabeled probe encodings
+   (first 1024 pairs' input features only; labels are never read in the
+   shim) are matched to each candidate BN's stored
+   moving_mean/moving_variance by z-scored MSE. BN16 pair is resolved
+   first on first-conv outputs (BN-independent); BN32 pair is then
+   resolved on second-conv outputs with BN16 fixed. Assignment requires
+   a decisive margin (cost ratio >= 2) or the run aborts. Assignment,
+   distances and margins are disclosed in
+   results/comparator_b_deepimmuno_meta.json.
+4. Sanity gate: probe predictions must spread within (0,1) with std >
+   1e-4; spread recorded in the meta JSON. Saturation aborts the run.
+
+Comparator metrics are computed only afterwards by the locked --score
+phase from committed per-row scores.

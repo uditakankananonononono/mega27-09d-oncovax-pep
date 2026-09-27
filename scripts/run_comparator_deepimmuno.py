@@ -119,6 +119,72 @@ def hla_data_aaindex(hla_dic, hla_type, after_pca, dic_inventory, mapping_log):
     encode = encode.reshape(encode.shape[0], encode.shape[1], -1)
     return encode
 
+# ---- Keras-3 compat shim (addendum supplement 1; label-free) ----
+CKPT_REPACK = "/tmp/di_ckpt"
+
+def _repack_checkpoint():
+    import shutil
+    srcd = os.path.join(DI, 'models/cnn_model_331_3_7')
+    os.makedirs(CKPT_REPACK, exist_ok=True)
+    for a, b in [('.data-00000-of-00001', 'ckpt.data-00000-of-00001'),
+                 ('.index', 'ckpt.index')]:
+        shutil.copyfile(os.path.join(srcd, a), os.path.join(CKPT_REPACK, b))
+    with open(os.path.join(CKPT_REPACK, 'checkpoint'), 'w') as fh:
+        fh.write('model_checkpoint_path: "ckpt"\nall_model_checkpoint_paths: "ckpt"\n')
+
+def load_published_weights(model, x1_probe, x2_probe):
+    import tensorflow as tf
+    _repack_checkpoint()
+    reader = tf.train.load_checkpoint(os.path.join(CKPT_REPACK, 'ckpt'))
+    def var(i, name):
+        return reader.get_tensor(f'layer_with_weights-{i}/{name}/.ATTRIBUTES/VARIABLE_VALUE')
+    def assign(layer_name, i):
+        layer = model.get_layer(layer_name)
+        got = [var(i, 'kernel'), var(i, 'bias')]
+        for w, g in zip(layer.get_weights(), got):
+            assert w.shape == g.shape, f"{layer_name}: checkpoint shape {g.shape} != model {w.shape}"
+        layer.set_weights(got)
+    # convs + head unambiguous by kernel shape (addendum supplement 1)
+    assign('conv2d', 1)      # peptide conv1 [2,12,1,16]
+    assign('conv2d_2', 0)    # HLA conv1 [15,12,1,16]
+    assign('conv2d_1', 4)    # peptide conv2 [2,1,16,32]
+    assign('conv2d_3', 5)    # HLA conv2 [9,1,16,32]
+    assign('dense', 8)       # [256,128]
+    assign('dense_1', 9)     # [128,1]
+    report = {"shim": "Keras3 cannot read TF2 object checkpoint; file-level repack to /tmp/di_ckpt (bytes unchanged, prefix renamed) + name-mapped variable assignment; no numeric modification of weights",
+              "conv_dense_assignment": {"conv2d(pep1)": 1, "conv2d_2(hla1)": 0, "conv2d_1(pep2)": 4, "conv2d_3(hla2)": 5, "dense": 8, "dense_1": 9},
+              "bn_pairing_method": "label-free: empirical pre-BN channel means on unlabeled probe encodings matched to stored moving_mean/moving_variance via z-MSE; aborts if margin < 2"}
+    def chmean(t):
+        return np.asarray(t).mean(axis=(0, 1, 2))
+    def zdist(m, i):
+        mu = var(i, 'moving_mean'); v = var(i, 'moving_variance')
+        return float(((m - mu) ** 2 / (v + 1e-5)).mean())
+    def pair(pep_layer, hla_layer, m_pep, m_hla, cand):
+        d = {i: (zdist(m_pep, i), zdist(m_hla, i)) for i in cand}
+        costA = d[cand[0]][0] + d[cand[1]][1]
+        costB = d[cand[1]][0] + d[cand[0]][1]
+        pep_i, hla_i = (cand[0], cand[1]) if costA <= costB else (cand[1], cand[0])
+        margin = max(costA, costB) / (min(costA, costB) + 1e-12)
+        assert margin >= 2.0, f"BN pairing indecisive: margin {margin}"
+        for layer_name, i in [(pep_layer, pep_i), (hla_layer, hla_i)]:
+            model.get_layer(layer_name).set_weights(
+                [var(i, 'gamma'), var(i, 'beta'), var(i, 'moving_mean'), var(i, 'moving_variance')])
+        return {"pep": pep_i, "hla": hla_i, "margin": margin,
+                "zdist": {str(k): [round(x, 6) for x in v] for k, v in d.items()}}
+    L = model.get_layer
+    # BN16 pair: first-conv outputs are BN-independent
+    m_pep1 = chmean(L('conv2d')(x1_probe))
+    m_hla1 = chmean(L('conv2d_2')(x2_probe))
+    report['bn16_assignment'] = pair('batch_normalization', 'batch_normalization_2', m_pep1, m_hla1, (2, 3))
+    # BN32 pair: second-conv outputs with BN16 fixed
+    bn = lambda name, t: L(name)(t, training=False)
+    o_pep = L('conv2d_1')(tf.nn.relu(bn('batch_normalization', L('conv2d')(x1_probe))))
+    pool = tf.keras.layers.MaxPool2D(pool_size=(2, 1), strides=(2, 1))
+    o_hla = L('conv2d_3')(pool(tf.nn.relu(bn('batch_normalization_2', L('conv2d_2')(x2_probe)))))
+    report['bn32_assignment'] = pair('batch_normalization_1', 'batch_normalization_3', chmean(o_pep), chmean(o_hla), (6, 7))
+    report['tf_version'] = tf.__version__
+    return report
+
 def infer():
     import tensorflow as tf
     after_pca = np.loadtxt(os.path.join(DI, 'data/after_pca.txt'))
@@ -126,13 +192,21 @@ def infer():
     hla_dic = {hla['HLA'].iloc[i]: hla['pseudo'].iloc[i] for i in range(hla.shape[0])}
     inventory = list(hla_dic.keys())
     dic_inv = dict_inventory(inventory)
-    model = seperateCNN()
-    model.load_weights(os.path.join(DI, 'models/cnn_model_331_3_7/'))
-
     rows = list(csv.DictReader(open(SPLITS)))
     test = [r for r in rows if r['split'] == 'test' and len(r['peptide']) in (9, 10)]
     pairs = sorted({(r['peptide'], r['allele']) for r in test})
     print(f"infer: {len(pairs)} unique 9-10mer pairs", flush=True)
+
+    model = seperateCNN()
+    probe = pairs[:1024]
+    x1p = np.stack([peptide_data_aaindex(p, after_pca) for p, a in probe])
+    x2p = np.stack([hla_data_aaindex(hla_dic, a.replace(':', ''), after_pca, dic_inv, {}) for p, a in probe])
+    shim_report = load_published_weights(model, x1p, x2p)
+    probe_pred = model.predict(x=[x1p, x2p], verbose=0).reshape(-1)
+    shim_report['probe_score_spread'] = {"min": float(probe_pred.min()), "max": float(probe_pred.max()),
+                                         "std": float(probe_pred.std())}
+    assert probe_pred.std() > 1e-4 and 0 <= probe_pred.min() and probe_pred.max() <= 1, "saturated or degenerate predictions after shim"
+    print("shim:", json.dumps(shim_report), flush=True)
 
     mapping_log = {}
     out_rows = []
@@ -157,7 +231,8 @@ def infer():
         norm_map[pretty] = pretty_v
     json.dump({"allele_mapping": norm_map,
                "deepimmuno_commit": "df42ac5b6bddfe531268335e2dcb496559cd488b",
-               "weights": "models/cnn_model_331_3_7 (TF1 checkpoint)",
+               "weights": "models/cnn_model_331_3_7 (TF2 object checkpoint df42ac5)",
+               "keras3_shim": shim_report,
                "n_pairs": len(out_rows)},
               open('results/comparator_b_deepimmuno_meta.json', 'w'), indent=1)
     print("INFER DONE", flush=True)
