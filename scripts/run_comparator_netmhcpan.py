@@ -48,6 +48,11 @@ def fetch_all():
     rows = list(csv.DictReader(open(SPLITS)))
     test = [r for r in rows if r["split"] == "test"]
     alleles = sorted({r["allele"] for r in test})
+    if "--shard" in sys.argv:
+        i = sys.argv.index("--shard")
+        idx, n = int(sys.argv[i + 1]), int(sys.argv[i + 2])
+        alleles = [a for j, a in enumerate(alleles) if j % n == idx]
+        print(f"shard {idx}/{n}: {len(alleles)} alleles", flush=True)
     by_len = {}
     for r in test:
         by_len.setdefault(len(r["peptide"]), set()).add(r["peptide"])
