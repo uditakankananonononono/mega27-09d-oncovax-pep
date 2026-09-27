@@ -44,10 +44,11 @@ def gtex(gene):
 
 def main():
     named = json.load(open(f"{D}/named_candidates_scores.json"))
-    recs = json.load(gzip.open(f"{D}/funnel_prescr.json.gz", "rt"))["records"]
-    # peptide -> carrier records
+    # peptide -> carrier records (streamed JSONL)
     carry = {}
-    for r in recs:
+    with gzip.open(f"{D}/funnel_prescr.jsonl.gz", "rt") as fin:
+        for line in fin:
+            r = json.loads(line)
         for p in r["peptides"]:
             carry.setdefault(p, []).append({"sample": r["sample"], "gene": r["gene"],
                                             "hgvsp": r["hgvsp"], "tpm": r["tpm"]})

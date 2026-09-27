@@ -21,20 +21,26 @@ def build_manifest():
         {"op":"=","content":{"field":"cases.project.project_id","value":"TCGA-SKCM"}},
         {"op":"=","content":{"field":"data_type","value":"Gene Expression Quantification"}},
         {"op":"=","content":{"field":"access","value":"open"}}]}
-    fields = "file_id,file_name,md5sum,cases.samples.submitter_id,cases.samples.sample_type"
+    fields = "file_id,file_name,md5sum,associated_entities.entity_type,associated_entities.entity_submitter_id"
+    expand = "associated_entities"
     out, from_ = [], 0
     while True:
         d = json.loads(post("https://api.gdc.cancer.gov/files",
-                            {"filters":filt,"fields":fields,"size":500,"from":from_,"format":"json"}))
+                            {"filters":filt,"fields":fields,"expand":expand,"size":500,"from":from_,"format":"json"}))
         hits = d["data"]["hits"]
         for h in hits:
-            for c in h.get("cases", []):
-                for s in c.get("samples", []):
-                    st = s.get("sample_type", "")
-                    if "Tumor" in st:
-                        out.append({"file_id": h["file_id"], "file_name": h["file_name"],
-                                    "md5sum": h.get("md5sum"),
-                                    "sample": s["submitter_id"][:16], "sample_type": st})
+            # associated_entities aliquot barcode is the reliable file->sample map
+            # (cases.samples expand only nests one sample per case -> only 103/473 mapped)
+            for e in h.get("associated_entities", []):
+                if e.get("entity_type") != "aliquot": continue
+                bc = e["entity_submitter_id"]
+                sample = bc[:16]
+                try: stype_code = int(bc[13:15])
+                except (ValueError, IndexError): continue
+                if 1 <= stype_code <= 9:  # tumor vials only
+                    out.append({"file_id": h["file_id"], "file_name": h["file_name"],
+                                "md5sum": h.get("md5sum"),
+                                "sample": sample, "sample_type": f"code{stype_code:02d}"})
         from_ += len(hits)
         if from_ >= d["data"]["pagination"]["total"] or not hits: break
     json.dump({"retrieved": "2026-09-28", "n": len(out), "files": out}, open(MAN, "w"), indent=1)
@@ -81,12 +87,22 @@ def main():
             continue
         try:
             req = urllib.request.Request(f"https://api.gdc.cancer.gov/data/{f['file_id']}")
-            with urllib.request.urlopen(req, timeout=300) as r:
+            with urllib.request.urlopen(req, timeout=60) as r:
                 b = r.read()
         except Exception as e:
-            print(f"{sample}: download failed {e}", flush=True)
-            time.sleep(5)
-            continue
+            ok = False
+            for att in range(2):
+                try:
+                    time.sleep(3)
+                    with urllib.request.urlopen(req, timeout=60) as r:
+                        b = r.read()
+                    ok = True
+                    break
+                except Exception:
+                    pass
+            if not ok:
+                print(f"{sample}: download failed {e}", flush=True)
+                continue
         if b[:2] == b"\x1f\x8b":
             b = gzip.decompress(b)
         tpm = parse_star(b, genes)
