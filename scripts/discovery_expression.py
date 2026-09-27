@@ -33,6 +33,7 @@ def build_manifest():
                     st = s.get("sample_type", "")
                     if "Tumor" in st:
                         out.append({"file_id": h["file_id"], "file_name": h["file_name"],
+                                    "md5sum": h.get("md5sum"),
                                     "sample": s["submitter_id"][:16], "sample_type": st})
         from_ += len(hits)
         if from_ >= d["data"]["pagination"]["total"] or not hits: break
@@ -61,10 +62,11 @@ def parse_star(b, genes):
 
 def main():
     man = build_manifest() if not os.path.exists(MAN) else json.load(open(MAN))["files"]
-    pep = json.load(gzip.open("results/discovery/neopeptides.json.gz", "rt"))
     need = {}
-    for r in pep["records"]:
-        need.setdefault(r["sample"], set()).add(r["gene"])
+    with gzip.open("results/discovery/neopeptides.jsonl.gz", "rt") as fh:
+        for line in fh:
+            r = json.loads(line)
+            need.setdefault(r["sample"], set()).add(r["gene"])
     fmap = {}
     for f in man:
         fmap.setdefault(f["sample"], f)   # first tumor aliquot wins; disclosed
