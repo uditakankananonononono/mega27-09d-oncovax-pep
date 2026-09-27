@@ -1,0 +1,6 @@
+{
+ "n_mutations_unique": 208277,
+ "mapped": 197245,
+ "gene_not_in_proteome": 3265,
+ "wt_mismatch_or_bad_aa": 7767
+}
