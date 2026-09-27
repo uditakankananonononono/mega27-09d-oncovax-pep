@@ -177,7 +177,9 @@ def score():
                excluded_l15=sorted([list(k) for k in excluded]),
                test_pos_rate=float(yte.mean()),
                results={"netmhcpan_el_rank": out},
-               model_v1_reference=json.load(open("results/model_v1_frozen_test.json"))["results"])
+               model_v1_reference_full_test=json.load(open("results/model_v1_frozen_test.json"))["results"],
+               model_v1_reference_subset_8_14={k: v["subset_8_14"] for k, v in
+                   json.load(open("results/model_v1_rescore_subset.json"))["results"].items()})
     json.dump(res, open("results/comparator_a_netmhcpan.json", "w"), indent=1)
     print(json.dumps(out, indent=1), flush=True)
     print("SCORE DONE", flush=True)
