@@ -64,6 +64,9 @@ def main():
             for member in tf:
                 if not member.isfile(): continue
                 b = tf.extractfile(member).read()
+                if member.name.endswith('.gz'):
+                    import gzip as _gz
+                    b = _gz.decompress(b)
                 muts.extend(parse_maf_bytes(member.name, b))
                 seen.add(member.name.split("/")[-1])
         missing = [f["file_name"] for f in chunk if f["file_name"] not in seen]
