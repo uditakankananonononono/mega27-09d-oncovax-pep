@@ -10,6 +10,9 @@ metrics via verbatim v1 metric code, write results/comparator_a_netmhcpan.json.
 """
 import csv, json, math, os, sys, time, urllib.request
 
+class UnsupportedError(Exception):
+    pass
+
 API = "https://api-nextgen-tools.iedb.org/api/v1"
 RAW = "results/comparator_a_raw"
 SPLITS = "data/processed/splits_v1.csv"
@@ -34,6 +37,8 @@ def run_batch(allele, L, peps):
                               "predictors": [{"type": "binding",
                                               "method": "netmhcpan_el"}]}}]}
     sub = post_json(f"{API}/pipeline", payload)
+    if "results_uri" not in sub:
+        raise UnsupportedError(str(sub.get("errors", sub))[:300])
     uri = sub["results_uri"]
     for _ in range(60):  # up to ~5 min per batch
         time.sleep(5)
@@ -67,15 +72,36 @@ def fetch_all():
                 print(f"[{done}/{total}] {a} L{L} cached", flush=True)
                 continue
             peps = sorted(peps)
-            for attempt in range(3):
-                try:
-                    res = run_batch(a, L, peps)
-                    break
-                except Exception as e:
-                    print(f"[{done}/{total}] {a} L{L} attempt {attempt+1} failed: {e}", flush=True)
-                    time.sleep([10, 30, 90][attempt])
-            else:
-                print(f"[{done}/{total}] {a} L{L} FAILED 3x - disclosed exclusion", flush=True)
+            try:
+                res = run_batch(a, L, peps)
+            except UnsupportedError as e:
+                json.dump({"unsupported": True, "allele": a, "L": L,
+                           "api_error": str(e)}, open(cache, "w"))
+                print(f"[{done}/{total}] {a} L{L} UNSUPPORTED by API - cached marker", flush=True)
+                continue
+            except Exception as e:
+                ok = False
+                for attempt in range(3):
+                    try:
+                        res = run_batch(a, L, peps)
+                        ok = True
+                        break
+                    except UnsupportedError as e2:
+                        res = e2
+                        break
+                    except Exception as e2:
+                        print(f"[{done}/{total}] {a} L{L} attempt {attempt+1} failed: {e2}", flush=True)
+                        time.sleep([10, 30, 90][attempt])
+                if isinstance(res, UnsupportedError):
+                    json.dump({"unsupported": True, "allele": a, "L": L,
+                               "api_error": str(res)}, open(cache, "w"))
+                    print(f"[{done}/{total}] {a} L{L} UNSUPPORTED by API - cached marker", flush=True)
+                elif not ok:
+                    print(f"[{done}/{total}] {a} L{L} FAILED 3x - disclosed exclusion", flush=True)
+                else:
+                    json.dump(res, open(cache, "w"))
+                    print(f"[{done}/{total}] {a} L{L} ok ({len(peps)} peps)", flush=True)
+                time.sleep(2)
                 continue
             json.dump(res, open(cache, "w"))
             print(f"[{done}/{total}] {a} L{L} ok ({len(peps)} peps)", flush=True)
@@ -101,6 +127,8 @@ def score():
         if not fn.endswith(".json"):
             continue
         d = json.load(open(f"{RAW}/{fn}"))
+        if d.get("unsupported"):
+            continue
         for t in d["data"]["results"]:
             if t["type"] != "peptide_table":
                 continue
@@ -124,11 +152,15 @@ def score():
             missing_pairs.append(key)
     print(f"scored {len(scored)}/{len(test)} pairs; missing {len(missing_pairs)}; "
           f"missing batches: {missing_batches}", flush=True)
-    if missing_pairs:
-        json.dump({"missing_pairs": missing_pairs, "missing_batches": missing_batches},
+    transient_missing = [k for k in missing_pairs if len(k[0]) != 15]
+    if transient_missing:
+        json.dump({"missing_pairs": transient_missing, "missing_batches": missing_batches},
                   open("results/comparator_a_missing.json", "w"), indent=1)
-        print("INCOMPLETE - fix missing before metrics", flush=True)
+        print("INCOMPLETE (non-L15 gaps) - fix before metrics", flush=True)
         return
+    # symmetric exclusion: L15 pairs dropped from BOTH sides (addendum note 1)
+    excluded = set(missing_pairs)
+    print(f"symmetric exclusion: {len(excluded)} pairs (L15, unsupported by NetMHCpan)", flush=True)
     yte = np.array([int(r["label"]) for r, _ in scored])
     gte = np.array([float(r["positive_fraction"]) for r, _ in scored])
     s = np.array([-p for _, p in scored])  # larger = stronger binder
@@ -140,7 +172,10 @@ def score():
                NDCG_at_100=float(ndcg_at_k(s, gte, k)))
     res = dict(comparator="NetMHCpan-4.1 EL percentile (IEDB nextgen API)",
                addendum="docs/ADDENDUM_COMPARATOR_A_EXEC_2026-09-28.md",
-               n_test=len(scored), test_pos_rate=float(yte.mean()),
+               n_test=len(scored),
+               n_excluded_l15=len(excluded),
+               excluded_l15=sorted([list(k) for k in excluded]),
+               test_pos_rate=float(yte.mean()),
                results={"netmhcpan_el_rank": out},
                model_v1_reference=json.load(open("results/model_v1_frozen_test.json"))["results"])
     json.dump(res, open("results/comparator_a_netmhcpan.json", "w"), indent=1)

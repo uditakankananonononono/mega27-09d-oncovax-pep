@@ -33,3 +33,14 @@ IEDB tools" route is now executable, so no proxy substitution is needed.
 BEAT requires exceeding BOTH comparators on AUPRC on the identical
 frozen test set. Comparator A alone passing/failing is reported as-is;
 Comparator B (DeepImmuno) follows under its own execution addendum.
+
+## Discovery note 1 (2026-09-28, before any scoring): 15-mers unsupported
+Live API response: "netmhcpan cannot predict binding for allele HLA-A*01:01
+with all requested peptide lengths" - NetMHCpan-4.1 EL via IEDB supports
+8-14-mers only. The 35 L15 test pairs (27 positive, disclosed: 77% positive
+rate, so exclusion is not label-neutral) are excluded SYMMETRICALLY from
+comparator and model metrics per this addendum's exclusion rule. The
+head-to-head set is therefore 4,314 pairs (all 8-14-mers), and model v1
+metrics will be recomputed on exactly that subset (per-row rescore,
+same seed/features) rather than quoted from the full-set run. The full-set
+v1 numbers remain committed as the full-set reference.
