@@ -100,9 +100,7 @@ def phase_self():
               open(f"{D}/funnel_self_qc.json", "w"), indent=1)
     print(f"self: {len(self_hits)}/{n_tot} unique peptides self-excluded; {n_surv}/{n_in} records survive", flush=True)
 
-def _mhcflurry(pairs):
-    from mhcflurry import Class1AffinityPredictor
-    pred = Class1AffinityPredictor.load()
+def _mhcflurry(pred, pairs):
     res = pred.predict_to_dataframe(peptides=[p for p, a in pairs],
                                     alleles=[a for p, a in pairs], throw=False)
     out = []
@@ -113,19 +111,40 @@ def _mhcflurry(pairs):
     return out
 
 def phase_prescr():
+    # STREAMING (2GB box): never materialize the full peptide/pair lists.
+    # Chunk boundaries identical to the old pep-major pairs list: each chunk =
+    # CHUNK/len(PANEL) consecutive peptides from _uniq_self.txt.gz x all alleles.
+    from mhcflurry import Class1AffinityPredictor
     os.makedirs(f"{D}/mhc_chunks", exist_ok=True)
     _unique_peptides(f"{D}/funnel_self.jsonl.gz", f"{D}/_uniq_self.txt.gz")
-    peps = [l.strip() for l in gzip.open(f"{D}/_uniq_self.txt.gz", "rt")]
-    pairs = [(p, a) for p in peps for a in PANEL]
-    print(f"prescr: {len(peps)} unique peptides x {len(PANEL)} = {len(pairs)} pairs", flush=True)
+    n_peps = sum(1 for _ in gzip.open(f"{D}/_uniq_self.txt.gz", "rt"))
+    n_pairs = n_peps * len(PANEL)
+    print(f"prescr: {n_peps} unique peptides x {len(PANEL)} = {n_pairs} pairs", flush=True)
+    pred = Class1AffinityPredictor.load()
     done_chunks = {int(f.split('_')[1].split('.')[0]) for f in os.listdir(f"{D}/mhc_chunks")}
-    for ci in range(0, len(pairs), CHUNK):
-        if ci // CHUNK in done_chunks:
-            continue
-        out = _mhcflurry(pairs[ci:ci + CHUNK])
+    per_chunk = CHUNK // len(PANEL)
+    buf, ci = [], 0
+    def flush(buf, ci):
+        pairs = [(p, a) for p in buf for a in PANEL]
+        out = _mhcflurry(pred, pairs)
         json.dump(out, gzip.open(f"{D}/mhc_chunks/chunk_{ci//CHUNK:05d}.json.gz", "wt"))
         if (ci // CHUNK) % 25 == 0:
-            print(f"  mhcflurry chunk {ci//CHUNK} ({ci}/{len(pairs)})", flush=True)
+            print(f"  mhcflurry chunk {ci//CHUNK} ({ci}/{n_pairs})", flush=True)
+    for line in gzip.open(f"{D}/_uniq_self.txt.gz", "rt"):
+        p = line.strip()
+        if not p: continue
+        if ci // CHUNK in done_chunks:
+            ci += len(PANEL)
+            continue
+        buf.append(p)
+        if len(buf) == per_chunk:
+            flush(buf, ci)
+            buf = []
+        ci += len(PANEL)
+    if buf:
+        # final partial chunk (skip only if its index is done)
+        if ci // CHUNK not in done_chunks:
+            flush(buf, ci)
     # streaming pass: peptides with any pct<=2
     keep_peps = set()
     for f in sorted(os.listdir(f"{D}/mhc_chunks")):
@@ -143,7 +162,7 @@ def phase_prescr():
                 r["peptides"] = kp
                 fout.write(json.dumps(r) + "\n")
                 n_surv += 1
-    json.dump({"n_pairs": len(pairs), "n_unique_peptides": len(peps),
+    json.dump({"n_pairs": n_pairs, "n_unique_peptides": n_peps,
                "n_peptides_pass_pct2": len(keep_peps),
                "n_records_in": n_in, "n_records_surv": n_surv},
               open(f"{D}/funnel_prescr_qc.json", "w"), indent=1)
