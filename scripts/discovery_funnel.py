@@ -124,12 +124,18 @@ def phase_prescr():
     done_chunks = {int(f.split('_')[1].split('.')[0]) for f in os.listdir(f"{D}/mhc_chunks")}
     per_chunk = CHUNK // len(PANEL)
     buf, ci = [], 0
+    done_this_session = [0]
+    SESSION_CAP = 250  # fresh process every ~250 chunks: RSS growth slows TF 8x
     def flush(buf, ci):
         pairs = [(p, a) for p in buf for a in PANEL]
         out = _mhcflurry(pred, pairs)
         json.dump(out, gzip.open(f"{D}/mhc_chunks/chunk_{ci//CHUNK:05d}.json.gz", "wt"))
+        done_this_session[0] += 1
         if (ci // CHUNK) % 25 == 0:
             print(f"  mhcflurry chunk {ci//CHUNK} ({ci}/{n_pairs})", flush=True)
+        if done_this_session[0] >= SESSION_CAP:
+            print("prescr: session cap reached, exit for fresh restart", flush=True)
+            sys.exit(0)
     for line in gzip.open(f"{D}/_uniq_self.txt.gz", "rt"):
         p = line.strip()
         if not p: continue
