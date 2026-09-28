@@ -125,7 +125,7 @@ def phase_prescr():
     per_chunk = CHUNK // len(PANEL)
     buf, ci = [], 0
     done_this_session = [0]
-    SESSION_CAP = 250  # fresh process every ~250 chunks: RSS growth slows TF 8x
+    REEXEC_EVERY = 60  # re-exec fresh interpreter: RSS growth slows TF ~8x by chunk ~30
     def flush(buf, ci):
         pairs = [(p, a) for p in buf for a in PANEL]
         out = _mhcflurry(pred, pairs)
@@ -133,9 +133,9 @@ def phase_prescr():
         done_this_session[0] += 1
         if (ci // CHUNK) % 25 == 0:
             print(f"  mhcflurry chunk {ci//CHUNK} ({ci}/{n_pairs})", flush=True)
-        if done_this_session[0] >= SESSION_CAP:
-            print("prescr: session cap reached, exit for fresh restart", flush=True)
-            sys.exit(0)
+        if done_this_session[0] >= REEXEC_EVERY:
+            print("prescr: re-exec for fresh interpreter", flush=True)
+            os.execv(sys.executable, [sys.executable] + sys.argv)
     for line in gzip.open(f"{D}/_uniq_self.txt.gz", "rt"):
         p = line.strip()
         if not p: continue
