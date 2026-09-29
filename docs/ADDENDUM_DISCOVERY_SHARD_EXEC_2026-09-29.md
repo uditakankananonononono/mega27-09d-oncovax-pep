@@ -39,3 +39,11 @@ into each worker artifact (~860 MB). The corrected workflow stages exactly
 [start,end) in /tmp/prescr-shard before upload; verify expected filenames,
 count, and row contents after download. Earlier oversized artifacts are not
 merged.
+
+Score stage memory correction (before any scores existed): the original
+implementation built 1,015,844 pair features in one NumPy array and was OOM
+killed on the 2 GB box. The same frozen training split, hgb/logreg hyperparams,
+feature function, MHCflurry cache, and <=2 percentile filter are retained.
+Predict in 20,000-pair chunk batches instead, write per-model atomic output,
+and calculate the 99th percentile from the completed hgb scores only.
+Numerical parity and counts must be checked before nomination.

@@ -218,27 +218,36 @@ def phase_score():
             for p in json.loads(line)["peptides"]:
                 for a in PANEL:
                     keep.add((p, a))
-    # affinities for kept pairs from chunks (only kept pairs held in RAM)
-    aff = {}
-    for f in sorted(os.listdir(f"{D}/mhc_chunks")):
-        for p, a, af, pct in json.load(gzip.open(f"{D}/mhc_chunks/{f}", "rt")):
-            if (p, a) in keep and pct is not None and pct <= 2.0:
-                aff[(p, a)] = af
-    pairs = sorted(aff)
-    print(f"score: {len(pairs)} prescreened pairs", flush=True)
-    X = np.array([feats(p, aff[(p, a)]) for p, a in pairs])
-    with gzip.open(f"{D}/funnel_scores.jsonl.gz", "wt") as out:
-        for name, clf in [("hgb", hgb), ("logreg", lr)]:
-            s = clf.predict_proba(X)[:, 1]
-            for (p, a), v in zip(pairs, s):
-                out.write(json.dumps({"model": name, "peptide": p, "allele": a,
-                                      "score": float(v), "aff_nm": aff[(p, a)]}) + "\n")
+    # Preserve the same two fitted classifiers and frozen features, but never
+    # materialize a million-pair feature matrix. Score ordered chunk batches.
+    # Keep set records the already frozen prescreen survivors; pair inclusion
+    # remains pct<=2 in the same chunk cache as the original implementation.
+    for name, clf in [("hgb", hgb), ("logreg", lr)]:
+        outpath = f"{D}/funnel_scores_{name}.jsonl.gz"
+        with gzip.open(outpath + ".partial", "wt") as out:
+            n_score = 0
+            for f in sorted(os.listdir(f"{D}/mhc_chunks")):
+                rows = json.load(gzip.open(f"{D}/mhc_chunks/{f}", "rt"))
+                batch = [(p, a, af) for p, a, af, pct in rows
+                         if (p, a) in keep and pct is not None and pct <= 2.0]
+                if not batch: continue
+                xb = np.array([feats(p, af) for p, a, af in batch])
+                scores = clf.predict_proba(xb)[:, 1]
+                for (p, a, af), v in zip(batch, scores):
+                    out.write(json.dumps({"model": name, "peptide": p,
+                                          "allele": a, "score": float(v),
+                                          "aff_nm": af}) + "\n")
+                n_score += len(batch)
+                if int(f[6:11]) % 100 == 0:
+                    print(f"score {name}: through {f}, {n_score} pairs", flush=True)
+        os.replace(outpath + ".partial", outpath)
+        print(f"score {name}: {n_score} pairs done", flush=True)
     print("score: done", flush=True)
 
 def phase_thresh():
     import numpy as np
     vals = []
-    with gzip.open(f"{D}/funnel_scores.jsonl.gz", "rt") as fh:
+    with gzip.open(f"{D}/funnel_scores_hgb.jsonl.gz", "rt") as fh:
         for line in fh:
             r = json.loads(line)
             if r["model"] == "hgb":
@@ -246,7 +255,7 @@ def phase_thresh():
     vals = np.array(sorted(vals))
     thr = float(np.quantile(vals, 0.99))
     named = {}
-    with gzip.open(f"{D}/funnel_scores.jsonl.gz", "rt") as fh:
+    with gzip.open(f"{D}/funnel_scores_hgb.jsonl.gz", "rt") as fh:
         for line in fh:
             r = json.loads(line)
             if r["model"] == "hgb" and r["score"] >= thr:
