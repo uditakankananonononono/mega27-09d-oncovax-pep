@@ -1,0 +1,15 @@
+# 09d candidate evidence QC, 2026-09-29
+
+This addendum records a post-threshold source check. It does not change the locked HGB threshold, re-rank candidates, or establish an immunogenic discovery.
+
+## GVFGGLWGV source and exact-self check
+
+The frozen reviewed-human-proteome index contains CLCN3 canonical sequence (818 aa), with A at one-based position 405. The stored mutation record `TCGA-EE-A3AD-06A`, `CLCN3 p.A405V` produces `GVFGGLWGV` at one-based positions 396-404. The corresponding WT window is `GVFGGLWGA`. The mutant peptide is present in `neopeptides.jsonl.gz` and `funnel_self.jsonl.gz`. Direct exact substring search found no `GVFGGLWGV` among the 20,213 sequences of the stored index or within the raw stored reviewed-human FASTA. This validates the exclusion only against the declared frozen reference, not against every isoform, variant or population proteome.
+
+PeptideAtlas ProteoMapper's mapping endpoint (`https://peptideatlas.org/api/promast/v1/map?proteome=Hs&peptide=GVFGGLWGV`) reports one mapping to P04637 at 273, even with `fuzzy=0`. This result is inconsistent with the current UniProt P04637 canonical TP53 sequence (`https://rest.uniprot.org/uniprotkb/P04637.json`), which has no exact `GVFGGLWGV`; its positions 273 onward do not contain that sequence. The discrepancy's cause is unresolved, including the PeptideAtlas database version and mapping semantics. The returned mapping must not be treated as an exact reference-self hit, nor as measured peptide presentation. No spectrum-level identification has been established by this check. Until the discrepancy is resolved, do not claim exhaustive self exclusion.
+
+The current lead has HGB score 0.9712772070663221, MHCflurry affinity 13.20263682606981 nM, percentile 0.02475 and source-sample tumor TPM 273.6284. These are in-silico and transcript evidence, not immunopeptidomics confirmation. GTEx v8 CLCN3 median is 16.8262 TPM across 54 tissues. Exact gene/variant PubMed and PRIDE project-keyword searches did not return hits, but are not peptide-level absence tests.
+
+## Next independent evidence gate
+
+A candidate can only be described as experimentally presented if an independent peptide-level identification with a traceable dataset, spectrum/PSM, sample and sequence is found and reviewed. A peptide-to-protein mapping or project-keyword result is not that evidence. If no identification is found, label the candidate computational and list the unresolved evidence explicitly.
