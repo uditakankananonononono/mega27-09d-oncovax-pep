@@ -44,12 +44,14 @@ def gtex(gene):
 
 def main():
     named = json.load(open(f"{D}/named_candidates_scores.json"))
+    named_peps = {k.split("|")[0] for k in named}
     # peptide -> carrier records (streamed JSONL)
     carry = {}
     with gzip.open(f"{D}/funnel_prescr.jsonl.gz", "rt") as fin:
         for line in fin:
             r = json.loads(line)
             for p in r["peptides"]:
+                if p not in named_peps: continue
                 carry.setdefault(p, []).append({"sample": r["sample"], "gene": r["gene"],
                                                 "hgvsp": r["hgvsp"], "tpm": r["tpm"]})
     train_peps = set()
