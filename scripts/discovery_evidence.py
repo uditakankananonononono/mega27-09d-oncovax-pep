@@ -23,7 +23,7 @@ def pride(peptide):
     q = urllib.parse.quote(peptide)
     try:
         d = json.loads(get(f"https://www.ebi.ac.uk/pride/ws/archive/v2/search/projects?keyword={q}&pageSize=5"))
-        hits = d.get("_embedded", {}).get("projects", [])
+        hits = d if isinstance(d, list) else d.get("_embedded", {}).get("projects", [])
         return [{"accession": h.get("accession"), "title": (h.get("title") or "")[:160]} for h in hits]
     except Exception as e:
         return {"error": str(e)[:200]}
@@ -33,7 +33,7 @@ def gtex(gene):
         d = json.loads(get(f"https://gtexportal.org/api/v2/reference/gene?geneId={urllib.parse.quote(gene)}"))
         gid = d["data"][0]["gencodeId"] if d.get("data") else None
         if not gid: return {"error": "gene not found"}
-        e = json.loads(get(f"https://gtexportal.org/api/v2/expression/medianGeneExpression?gencodeId={urllib.parse.quote(gid)}"))
+        e = json.loads(get(f"https://gtexportal.org/api/v2/expression/medianGeneExpression?gencodeId={urllib.parse.quote(gid)}&datasetId=gtex_v8"))
         tpms = [x.get("median") for x in e.get("data", []) if x.get("median") is not None]
         tpms = sorted(tpms)
         if not tpms: return {"error": "no expression data"}
