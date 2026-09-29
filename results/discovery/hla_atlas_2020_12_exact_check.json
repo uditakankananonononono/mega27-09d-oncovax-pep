@@ -1,0 +1,11 @@
+{
+  "source": "https://hla-ligand-atlas.org/rel/hla_2020.12.zip",
+  "archive_sha256": "e9622ddaab5cb18592e9378b5df917b73afcbe6e08a5151be99b18aa59a232d1",
+  "release": "2020.12",
+  "n_atlas_unique_peptides": 223246,
+  "n_shortlist_unique_peptides": 7007,
+  "n_top_40_exact_hits": 0,
+  "n_all_exact_hits": 0,
+  "exact_hits": [],
+  "interpretation": "Exact lookup within 2020.12 benign HLA ligand release only; absence is not tumor presentation."
+}
