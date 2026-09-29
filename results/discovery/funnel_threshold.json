@@ -1,0 +1,6 @@
+{
+ "n_scored_pairs": 1015844,
+ "top1pct_threshold": 0.7167524469502056,
+ "n_named_candidates": 10159,
+ "threshold_rule": "hgb >= 99th percentile of all prescreened pair scores (locked before named selection)"
+}
