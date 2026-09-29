@@ -33,3 +33,9 @@ uploads each range as a named artifact before the job ends. Branch publication
 is removed. A run with both artifact upload and branch push may finish with
 an error even when artifact exists; the artifact's bytes and peptide-pair
 alignment, not the job success badge, determine whether chunks are usable.
+
+Artifact-only attempt used a broad glob that swept the 2,581 tracked prefix
+into each worker artifact (~860 MB). The corrected workflow stages exactly
+[start,end) in /tmp/prescr-shard before upload; verify expected filenames,
+count, and row contents after download. Earlier oversized artifacts are not
+merged.

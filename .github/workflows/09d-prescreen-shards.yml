@@ -49,10 +49,20 @@ jobs:
           TF_NUM_INTEROP_THREADS: '1'
           TF_CPP_MIN_LOG_LEVEL: '3'
         run: python scripts/discovery_prescr_shard.py --start ${{ matrix.start }} --end ${{ matrix.end }}
+      - name: Stage only this worker range
+        run: |
+          mkdir -p /tmp/prescr-shard
+          python - <<'PY_RANGE'
+          import shutil
+          start, end = ${{ matrix.start }}, ${{ matrix.end }}
+          for n in range(start, end):
+              p = f"results/discovery/mhc_chunks/chunk_{n:05d}.json.gz"
+              shutil.copy2(p, "/tmp/prescr-shard/")
+          PY_RANGE
       - name: Preserve chunks as downloadable artifact
         uses: actions/upload-artifact@v4
         with:
           name: prescr-${{ matrix.start }}-${{ matrix.end }}
-          path: results/discovery/mhc_chunks/chunk_*.json.gz
+          path: /tmp/prescr-shard/*.json.gz
           if-no-files-found: error
           retention-days: 7
