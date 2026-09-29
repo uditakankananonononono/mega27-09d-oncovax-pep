@@ -1,0 +1,21 @@
+{
+  "source": "http://www.biostatistics.online/dbPepNeo/download.html",
+  "n_shortlist_unique_peptides": 7007,
+  "catalogs": {
+    "HC": {
+      "archive_sha256": "0aabdaa55dc53a4754cadbd18fdafa97678086b5fad94950923914d4f83e5d81",
+      "n_data_rows": 309,
+      "n_unique_peptides": 256,
+      "n_shortlist_exact_hits": 0,
+      "exact_hits": []
+    },
+    "MC": {
+      "archive_sha256": "27213a807e2bb42fe492b2606af9f8da9b57ff30684e0a123b0ad4fcc062e4d4",
+      "n_data_rows": 260,
+      "n_unique_peptides": 247,
+      "n_shortlist_exact_hits": 0,
+      "exact_hits": []
+    }
+  },
+  "interpretation": "Exact lookup in dbPepNeo 2019 catalogs only; absence does not prove novelty or HLA presentation."
+}
