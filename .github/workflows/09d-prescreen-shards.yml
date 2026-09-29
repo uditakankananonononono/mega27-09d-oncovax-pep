@@ -1,0 +1,61 @@
+name: 09d prescreen parallel shards
+on:
+  push:
+    branches: [main]
+    paths: [scripts/discovery_prescr_shard.py, .github/workflows/09d-prescreen-shards.yml]
+permissions:
+  contents: write
+jobs:
+  score:
+    if: github.repository == 'uditakankananonononono/mega27-09d-oncovax-pep'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {start: 2580, end: 2639}
+          - {start: 2639, end: 2698}
+          - {start: 2698, end: 2757}
+          - {start: 2757, end: 2816}
+          - {start: 2816, end: 2875}
+          - {start: 2875, end: 2934}
+          - {start: 2934, end: 2993}
+          - {start: 2993, end: 3052}
+          - {start: 3052, end: 3111}
+          - {start: 3111, end: 3170}
+          - {start: 3170, end: 3229}
+          - {start: 3229, end: 3285}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install fixed MHCflurry engine and models
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install 'mhcflurry==2.2.1' 'tensorflow-cpu==2.21.0' 'numpy==2.2.6' 'pandas==2.3.3' 'scikit-learn==1.7.2'
+          mhcflurry-downloads fetch models_class1_pan
+          python - <<'PY_MODEL'
+          from mhcflurry import Class1AffinityPredictor
+          p = Class1AffinityPredictor.load()
+          print("model loaded")
+          PY_MODEL
+      - name: Prescreen fixed chunk range
+        env:
+          MALLOC_ARENA_MAX: '2'
+          OMP_NUM_THREADS: '2'
+          TF_NUM_INTRAOP_THREADS: '2'
+          TF_NUM_INTEROP_THREADS: '1'
+          TF_CPP_MIN_LOG_LEVEL: '3'
+        run: python scripts/discovery_prescr_shard.py --start ${{ matrix.start }} --end ${{ matrix.end }}
+      - name: Publish only this worker's chunk range to a separate branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "prescr-shard-${{ matrix.start }}-${{ matrix.end }}"
+          git add results/discovery/mhc_chunks/chunk_*.json.gz
+          git commit -m "prescreen shard ${{ matrix.start }}-${{ matrix.end }}" || exit 1
+          git push origin "HEAD:refs/heads/prescr-shard-${{ matrix.start }}-${{ matrix.end }}"
