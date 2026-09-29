@@ -44,6 +44,9 @@ def gtex(gene):
 
 def main():
     named = json.load(open(f"{D}/named_candidates_scores.json"))
+    limit = int(os.environ.get("EVIDENCE_MAX_PAIRS", "0"))
+    if limit:
+        named = dict(sorted(named.items(), key=lambda kv: -kv[1])[:limit])
     named_peps = {k.split("|")[0] for k in named}
     # peptide -> carrier records (streamed JSONL)
     carry = {}
