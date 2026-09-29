@@ -26,3 +26,10 @@ At the handoff, the box completed chunk 2580 while being stopped; its full
 committed at e642583. Remote range therefore starts at 2581, not 2580.
 The first workflow dispatched at cebf417 starts 2580 and must NOT be merged
 for chunk 2580; prefer the corrected workflow run and verify no duplicate.
+
+Worker branch publication failed in the first run after scoring succeeded;
+its computed files were lost with ephemeral runners. The recovery workflow
+uploads each range as a named artifact before the job ends. Branch publication
+is removed. A run with both artifact upload and branch push may finish with
+an error even when artifact exists; the artifact's bytes and peptide-pair
+alignment, not the job success badge, determine whether chunks are usable.

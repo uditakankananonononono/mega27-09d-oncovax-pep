@@ -56,13 +56,3 @@ jobs:
           path: results/discovery/mhc_chunks/chunk_*.json.gz
           if-no-files-found: error
           retention-days: 7
-      - name: Publish only this worker's chunk range to a separate branch
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git switch -c "prescr-shard-${{ matrix.start }}-${{ matrix.end }}"
-          git add results/discovery/mhc_chunks/chunk_*.json.gz
-          git commit -m "prescreen shard ${{ matrix.start }}-${{ matrix.end }}" || exit 1
-          git push origin "HEAD:refs/heads/prescr-shard-${{ matrix.start }}-${{ matrix.end }}"
