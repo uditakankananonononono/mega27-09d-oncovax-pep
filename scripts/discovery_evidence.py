@@ -49,9 +49,9 @@ def main():
     with gzip.open(f"{D}/funnel_prescr.jsonl.gz", "rt") as fin:
         for line in fin:
             r = json.loads(line)
-        for p in r["peptides"]:
-            carry.setdefault(p, []).append({"sample": r["sample"], "gene": r["gene"],
-                                            "hgvsp": r["hgvsp"], "tpm": r["tpm"]})
+            for p in r["peptides"]:
+                carry.setdefault(p, []).append({"sample": r["sample"], "gene": r["gene"],
+                                                "hgvsp": r["hgvsp"], "tpm": r["tpm"]})
     train_peps = set()
     import csv
     for row in csv.DictReader(open("data/processed/splits_v1.csv")):

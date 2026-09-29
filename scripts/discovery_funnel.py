@@ -199,7 +199,9 @@ def phase_score():
         aff_train = pickle.load(open(cache, "rb"))
     miss = [(r["peptide"], r["allele"]) for r in tr if (r["peptide"], r["allele"]) not in aff_train]
     if miss:
-        for p, a, aff, pct in _mhcflurry(miss):
+        from mhcflurry import Class1AffinityPredictor
+        pred = Class1AffinityPredictor.load()
+        for p, a, aff, pct in _mhcflurry(pred, miss):
             aff_train[(p, a)] = aff
         pickle.dump(aff_train, open(cache, "wb"))
     Xtr = np.array([feats(r["peptide"], aff_train.get((r["peptide"], r["allele"]), 500.0)) for r in tr])
