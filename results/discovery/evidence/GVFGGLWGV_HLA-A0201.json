@@ -1,0 +1,28 @@
+{
+ "peptide": "GVFGGLWGV",
+ "allele": "HLA-A*02:01",
+ "hgb_score": 0.9712772070663221,
+ "carriers": [
+  {
+   "sample": "TCGA-EE-A3AD-06A",
+   "gene": "CLCN3",
+   "hgvsp": "p.A405V",
+   "tpm": 273.6284
+  }
+ ],
+ "novelty": {
+  "in_09d_train_or_test_universe": false
+ },
+ "pubmed": {
+  "\"CLCN3\"[Title/Abstract] AND \"A405V\"": []
+ },
+ "pride": [],
+ "gtex": {
+  "CLCN3": {
+   "gencode_id": "ENSG00000109572.13",
+   "median_across_tissues": 16.8262,
+   "max_across_tissues": 45.6909,
+   "n_tissues": 54
+  }
+ }
+}
