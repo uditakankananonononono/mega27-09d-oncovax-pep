@@ -16,3 +16,7 @@ an existing box chunk before merger. Workers push disjoint branches, not main;
 main merge requires range completeness, hashes, row count and pair order
 checks. The box must stop before scoring the worker-assigned suffix to avoid
 racing and double counting. All raw negative and exclusion counts remain.
+
+Box boundary is enforced by PRESCR_BOX_END_CHUNK=2580, returning before
+any cross-shard chunk. This is an execution guard only; no QC is emitted
+until all worker chunks are merged and the standard prescr phase is resumed.

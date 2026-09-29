@@ -136,9 +136,13 @@ def phase_prescr():
         if done_this_session[0] >= REEXEC_EVERY:
             print("prescr: re-exec for fresh interpreter", flush=True)
             os.execv(sys.executable, [sys.executable] + sys.argv)
+    box_end = int(os.environ.get("PRESCR_BOX_END_CHUNK", "999999"))
     for line in gzip.open(f"{D}/_uniq_self.txt.gz", "rt"):
         p = line.strip()
         if not p: continue
+        if ci // CHUNK >= box_end:
+            print(f"prescr: stopped before shard-assigned chunk {box_end}", flush=True)
+            return
         if ci // CHUNK in done_chunks:
             ci += len(PANEL)
             continue
