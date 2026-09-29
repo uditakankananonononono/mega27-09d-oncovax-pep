@@ -13,3 +13,7 @@ The current lead has HGB score 0.9712772070663221, MHCflurry affinity 13.2026368
 ## Next independent evidence gate
 
 A candidate can only be described as experimentally presented if an independent peptide-level identification with a traceable dataset, spectrum/PSM, sample and sequence is found and reviewed. A peptide-to-protein mapping or project-keyword result is not that evidence. If no identification is found, label the candidate computational and list the unresolved evidence explicitly.
+
+## Independent mutation-catalog cross-check
+
+CAN-IMMUNE's live CLCN3 mutation endpoint (`https://canelib.erc.monash.edu/api/gene_mutations?gene=CLCN3&search%5Bvalue%5D=A405V&length=10`, checked September 29) returns two transcript records for `p.A405V`, `c.1214C>T`, `TCGA-EE-A3AD-06`, Skin, source `cosmic_TS`. Both list mutant local peptide `FILLGVFGGLWGVFFIRANIAWCRR` and wild peptide `FILLGVFGGLWGAFFIRANIAWCRR`. Its sample label lacks the final `A` seen in the analysis input (`TCGA-EE-A3AD-06A`); this is a sample-alias difference to reconcile rather than silently conflate. This corroborates the variant and mutant local sequence independently of our generation script, but is not a peptide-spectrum match or HLA presentation experiment.
